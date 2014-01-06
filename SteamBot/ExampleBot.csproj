@@ -63,10 +63,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BackpackExpander.cs" />
+    <Compile Include="GroupManager.cs" />
     <Compile Include="ItemTransferHandler.cs" />
     <Compile Include="SteamTradeDemoHandler.cs" />
     <Compile Include="TF2GC\Crafting.cs" />
     <Compile Include="TF2GC\Items.cs" />
+    <Compile Include="TF2GC\MsgSort.cs" />
+    <Compile Include="TF2GC\MsgSetItemPosition.cs" />
     <Compile Include="TF2GC\MsgCraft.cs" />
     <Compile Include="SteamGuardRequiredEventArgs.cs" />
     <Compile Include="Bot.cs" />

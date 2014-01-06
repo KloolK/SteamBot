@@ -80,22 +80,17 @@ namespace SteamBot
 
                 SendChatMessage(OtherSID, String.Format("crafted {0} scrap ({1} refined)", crafted.Item1, refCount));
             }
-            //else if (message.StartsWith("move "))
-            //{
-            //    string[] args = message.Split(' ');
+            else if (message.StartsWith("move "))
+            {
+                string[] args = message.Split(' ');
 
-            //    var msg = new ClientGCMsg<GCSetItemPosition>();
-
-            //    msg.Body.itemID = 1462727249UL;
-            //    msg.Body.newPosition = Convert.ToUInt16(args[1]);
-
-            //    Bot.SteamGameCoordinator.Send(msg, 440);
-            //}
+                TF2GC.Items.SetItemPosition(this.Bot, 1785564763UL, Convert.ToUInt32(args[1]));
+            }
             else if (message.StartsWith("delete "))
             {
                 string[] args = message.Split(' ');
 
-                TF2GC.Items.DeleteItem(this.Bot,  ulong.Parse(args[1]));
+                TF2GC.Items.DeleteItem(this.Bot, ulong.Parse(args[1]));
             }
             else if (message.StartsWith("sort "))
             {
@@ -105,7 +100,7 @@ namespace SteamBot
 
                 //msg.Body.sort_type = Convert.ToUInt64(args[1]);
 
-                //TF2GC.Items.SortItems(this.Bot, int.Parse(args[1]));
+                TF2GC.Items.SortItems(this.Bot, Convert.ToByte(args[1]));
             }
             else
             {

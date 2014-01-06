@@ -27,5 +27,28 @@ namespace SteamBot.TF2GC
 
             bot.SteamGameCoordinator.Send(deleteMsg, 440);
         }
+
+        public static void SetItemPosition(Bot bot, ulong id, uint position)
+        {
+            if (bot.CurrentGame != 440)
+                throw new Exception("SteamBot is not ingame with AppID 440; current AppID is " + bot.CurrentGame);
+
+            var setPosMsg = new ClientGCMsg<MsgSetItemPosition>();
+            setPosMsg.Body.id = id;
+            setPosMsg.Body.position = position;
+
+            bot.SteamGameCoordinator.Send(setPosMsg, 440);
+        }
+
+        public static void SortItems(Bot bot, byte sortType)
+        {
+            if (bot.CurrentGame != 440)
+                throw new Exception("SteamBot is not ingame with AppID 440; current AppID is " + bot.CurrentGame);
+
+            var setPosMsg = new ClientGCMsg<MsgSort>();
+            setPosMsg.Body.sortType = sortType;
+
+            bot.SteamGameCoordinator.Send(setPosMsg, 440);
+        }
     }
 }
