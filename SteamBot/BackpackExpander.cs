@@ -253,6 +253,11 @@ namespace SteamBot
             this.Trade.AcceptTrade();
         }
 
+        public override void OnTradeSuccess()
+        {
+            throw new NotImplementedException();
+        }
+
         private Dictionary<SteamKit2.SteamID, List<Inventory.Item>> GetGroupItems(string args)
         {
             // determine requested amount

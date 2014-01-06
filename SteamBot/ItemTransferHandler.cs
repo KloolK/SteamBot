@@ -195,6 +195,11 @@ namespace SteamBot
             Trade.AcceptTrade();
         }
 
+        public override void OnTradeSuccess()
+        {
+            throw new NotImplementedException();
+        }
+
         //private void GroupCommandHandler(string message)
         //{
         //    string[] args = message.Split(' ');
