@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Web;
 using System.Net;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Threading;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.ComponentModel;
+using SteamBot.SteamGroups;
 using SteamKit2;
 using SteamTrade;
 using SteamKit2.Internal;
@@ -50,6 +52,9 @@ namespace SteamBot
 
         List<SteamID> friends = new List<SteamID>();
 
+        // List of Steam groups the bot is in.
+        private readonly List<SteamID> groups = new List<SteamID>();
+
         // The maximum amount of time the bot will trade for.
         public int MaximumTradeTime { get; private set; }
 
@@ -83,9 +88,16 @@ namespace SteamBot
         SteamUser.LogOnDetails logOnDetails;
 
         TradeManager tradeManager;
+        private Task<Inventory> myInventoryTask;
 
-        public Inventory MyInventory;
-        public Inventory OtherInventory;
+        public Inventory MyInventory
+        {
+            get
+            {
+                myInventoryTask.Wait();
+                return myInventoryTask.Result;
+            }
+        }
 
         private BackgroundWorker backgroundWorker;
 
@@ -398,10 +410,37 @@ namespace SteamBot
             #endregion
 
             #region Friends
-            msg.Handle<SteamFriends.FriendsListCallback> (callback =>
+            msg.Handle<SteamFriends.FriendsListCallback>(callback =>
             {
                 foreach (SteamFriends.FriendsListCallback.Friend friend in callback.FriendList)
                 {
+                    if (friend.SteamID.AccountType == EAccountType.Clan)
+                    {
+                        if (!groups.Contains(friend.SteamID))
+                        {
+                            groups.Add(friend.SteamID);
+                            if (friend.Relationship == EFriendRelationship.RequestRecipient)
+                            {
+                                if (GetUserHandler(friend.SteamID).OnGroupAdd())
+                                {
+                                    AcceptGroupInvite(friend.SteamID);
+                                }
+                                else
+                                {
+                                    DeclineGroupInvite(friend.SteamID);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (friend.Relationship == EFriendRelationship.None)
+                            {
+                                groups.Remove(friend.SteamID);
+                            }
+                        }
+                    }
+                    else if (friend.SteamID.AccountType != EAccountType.Clan)
+                    {
                     if (!friends.Contains(friend.SteamID))
                     {
                         friends.Add(friend.SteamID);
@@ -420,14 +459,15 @@ namespace SteamBot
                         }
                     }
                 }
+                }
             });
+
 
             msg.Handle<SteamFriends.FriendMsgCallback> (callback =>
             {
                 EChatEntryType type = callback.EntryType;
 
-                if (callback.EntryType == EChatEntryType.ChatMsg ||
-                    callback.EntryType == EChatEntryType.Emote)
+                if (callback.EntryType == EChatEntryType.ChatMsg)
                 {
                     log.Info (String.Format ("Chat Message from {0}: {1}",
                                          SteamFriends.GetFriendPersonaName (callback.Sender),
@@ -503,11 +543,13 @@ namespace SteamBot
                 {
                     log.Debug ("Trade Status: " + callback.Response);
                     log.Info ("Trade Accepted!");
+                    GetUserHandler(callback.OtherClient).OnTradeRequestReply(true, callback.Response.ToString());
                 }
                 else
                 {
                     log.Warn ("Trade failed: " + callback.Response);
                     CloseTrade ();
+                    GetUserHandler(callback.OtherClient).OnTradeRequestReply(false, callback.Response.ToString());
                 }
 
             });
@@ -611,7 +653,7 @@ namespace SteamBot
         /// </example>
         public void GetInventory()
         {
-            MyInventory = Inventory.FetchInventory(SteamUser.SteamID, apiKey);
+            myInventoryTask = Task.Factory.StartNew(() => Inventory.FetchInventory(SteamUser.SteamID, apiKey));
         }
 
         /// <summary>
@@ -632,7 +674,7 @@ namespace SteamBot
         /// </example>
         public void GetOtherInventory(SteamID OtherSID)
         {
-            OtherInventory = Inventory.FetchInventory(OtherSID, apiKey);
+            Task.Factory.StartNew(() => Inventory.FetchInventory(OtherSID, apiKey));
         }
 
         /// <summary>
@@ -695,10 +737,25 @@ namespace SteamBot
 
         private void BackgroundWorkerOnDoWork(object sender, DoWorkEventArgs doWorkEventArgs)
         {
+            CallbackMsg msg;
+
             while (!backgroundWorker.CancellationPending)
             {
-                CallbackMsg msg = SteamClient.WaitForCallback(true);
-                HandleSteamMessage(msg);
+                try
+                {
+                    msg = SteamClient.WaitForCallback(true);
+                    HandleSteamMessage(msg);
+                }
+                catch (WebException e)
+                {
+                    log.Error("URI: " + (e.Response != null && e.Response.ResponseUri != null ? e.Response.ResponseUri.ToString() : "unknown") + " >> " + e.ToString());
+                    System.Threading.Thread.Sleep(45000);//Steam is down, retry in 45 seconds.
+                }
+                catch (Exception e)
+                {
+                    log.Error(e.ToString());
+                    log.Warn("Restarting bot...");
+                }
             }
         }
 
@@ -726,5 +783,54 @@ namespace SteamBot
                 }
             }
         }
+
+        #region Group Methods
+
+        /// <summary>
+        /// Accepts the invite to a Steam Group
+        /// </summary>
+        /// <param name="group">SteamID of the group to accept the invite from.</param>
+        private void AcceptGroupInvite(SteamID group)
+        {
+            var AcceptInvite = new ClientMsg<CMsgGroupInviteAction>((int)EMsg.ClientAcknowledgeClanInvite);
+
+            AcceptInvite.Body.GroupID = group.ConvertToUInt64();
+            AcceptInvite.Body.AcceptInvite = true;
+
+            this.SteamClient.Send(AcceptInvite);
+            
+        }
+
+        /// <summary>
+        /// Declines the invite to a Steam Group
+        /// </summary>
+        /// <param name="group">SteamID of the group to decline the invite from.</param>
+        private void DeclineGroupInvite(SteamID group)
+        {
+            var DeclineInvite = new ClientMsg<CMsgGroupInviteAction>((int)EMsg.ClientAcknowledgeClanInvite);
+
+            DeclineInvite.Body.GroupID = group.ConvertToUInt64();
+            DeclineInvite.Body.AcceptInvite = false;
+
+            this.SteamClient.Send(DeclineInvite);
+        }
+
+        /// <summary>
+        /// Invites a use to the specified Steam Group
+        /// </summary>
+        /// <param name="user">SteamID of the user to invite.</param>
+        /// <param name="groupId">SteamID of the group to invite the user to.</param>
+        public void InviteUserToGroup(SteamID user, SteamID groupId)
+        {
+            var InviteUser = new ClientMsg<CMsgInviteUserToGroup>((int)EMsg.ClientInviteUserToClan);
+
+            InviteUser.Body.GroupID = groupId.ConvertToUInt64();
+            InviteUser.Body.Invitee = user.ConvertToUInt64();
+            InviteUser.Body.UnknownInfo = true;
+
+            this.SteamClient.Send(InviteUser);
+        }
+
+        #endregion
     }
 }

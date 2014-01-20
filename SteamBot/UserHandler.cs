@@ -53,6 +53,14 @@ namespace SteamBot
         }
 
         /// <summary>
+        /// Called when the bot is invited to a Steam group
+        /// </summary>
+        /// <returns>
+        /// Whether to accept.
+        /// </returns>
+        public abstract bool OnGroupAdd();
+
+        /// <summary>
         /// Called when the user adds the bot as a friend.
         /// </summary>
         /// <returns>
@@ -100,6 +108,16 @@ namespace SteamBot
         /// </summary>
         /// <param name="command">The command message.</param>
         public virtual void OnBotCommand(string command)
+        {
+
+        }
+
+        /// <summary>
+        /// Called when user accepts or denies bot's trade request.
+        /// </summary>
+        /// <param name="accepted">True if user accepted bot's request, false if not.</param>
+        /// <param name="response">String response of the callback.</param>
+        public virtual void OnTradeRequestReply(bool accepted, string response)
         {
 
         }
