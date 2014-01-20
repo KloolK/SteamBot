@@ -115,6 +115,9 @@ namespace SteamTrade
             [JsonProperty("flag_cannot_trade")]
             public bool IsNotTradeable { get; set; }
 
+            [JsonProperty("inventory")]
+            public uint InventoryToken { get; set; }
+
             [JsonProperty("attributes")]
             public ItemAttribute[] Attributes { get; set; }
 

@@ -40,13 +40,16 @@ namespace SteamBot
 
         #region inventories
 
-        public Inventory GetInventory(SteamID id)
+        public Inventory GetInventory(SteamID id, bool readOnly)
         {
             if (!this.inventories.ContainsKey(id))
                 this.inventories.Add(id, Tuple.Create(FetchInventory(id), true));
 
             if (!GetInventoryClean(id))
-                FetchInventory(id);
+                this.inventories[id] = Tuple.Create(FetchInventory(id), true);
+
+            if (!readOnly)
+                SetInventoryDirty(id);
 
             return this.inventories[id].Item1;
         }
@@ -61,6 +64,12 @@ namespace SteamBot
             if (!this.inventories.ContainsKey(id)) return false;
 
             return this.inventories[id].Item2;
+        }
+        public void SetInventoryDirty(SteamID id)
+        {
+            if (!this.inventories.ContainsKey(id)) return;
+
+            this.inventories[id] = Tuple.Create(this.inventories[id].Item1, false);
         }
 
         #endregion

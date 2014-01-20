@@ -37,7 +37,7 @@ namespace SteamBot
             }
 
             // Wait for own group to be complete, so we really add all group members to friends
-            while (!BackpackExpander.groupManager.GroupComplete(this.groupID)) ;
+            //while (!BackpackExpander.groupManager.GroupComplete(this.groupID)) ;
 
             // Add all group members to friendslist (also accepts pending invites of group members)
             AddGroupFriends();
@@ -63,7 +63,57 @@ namespace SteamBot
                 return;
             }
             // TODO: use a command enum
-            if (message == "list friends")
+            if (message == "sort tickets")
+            {
+                this.Bot.SetGamePlaying(440);
+                uint pos = 1100;
+                var inventory = GetInventory(false);
+
+                foreach (var item in inventory.Items)
+                {
+                    if (item.Defindex == 725)
+                    {
+                        TF2GC.Items.SetItemPosition(this.Bot, item.Id, pos);
+                        pos--;
+                        Thread.Sleep(100);
+                    }
+                }
+                this.Bot.SetGamePlaying(0);
+            }
+            else if (message.StartsWith("move "))
+            {
+                //this.Bot.SetGamePlaying(440);
+                string[] args = message.Split(' ');
+                string[] start = args[1].Split(':');
+                string[] end = args[2].Split(':');
+                string[] dest = args[3].Split(':');
+                
+                uint startPos = (Convert.ToUInt32(start[0]) - 1) * 50 + Convert.ToUInt32(start[1]);
+                uint endPos = (Convert.ToUInt32(end[0]) - 1) * 50 + Convert.ToUInt32(end[1]);
+                uint destPos = (Convert.ToUInt32(dest[0]) - 1) * 50 + Convert.ToUInt32(dest[1]);
+
+                var inventory = GetInventory(false);
+                int count = 0;
+
+                foreach (var item in inventory.Items)
+                {                    
+                    uint pos = item.InventoryToken & 0x0000FFFFU;
+                    if (pos >= startPos && pos <= endPos)
+                    {
+                        uint newPos = destPos + (pos - startPos);
+                        TF2GC.Items.SetItemPosition(this.Bot, item.Id, newPos);
+                        count++;
+                        Thread.Sleep(100);
+                    }
+                }
+                //this.Bot.SetGamePlaying(0);
+                SendMessage(OtherSID, count.ToString());
+            }
+            else if (message == "open")
+                this.Bot.SetGamePlaying(440);
+            else if (message == "close")
+                this.Bot.SetGamePlaying(0);
+            else if (message == "list friends")
             {
                 string reply = "\n";
                 for (int i = 0; i < this.Bot.SteamFriends.GetFriendCount(); i++)
@@ -86,7 +136,7 @@ namespace SteamBot
             }
             else if (message == "items")
             {
-                string reply = GetInventory().Items.Length.ToString();
+                string reply = GetInventory(true).Items.Length.ToString();
                 SendMessage(OtherSID, reply);
             }
             else if (message.StartsWith("trade "))
@@ -287,7 +337,8 @@ namespace SteamBot
             {
                 //if (matches >= requested && !all) break;
 
-                Inventory inventory = GetInventory(groupMember);
+                // TODO: readOnly param übergeben?
+                Inventory inventory = GetInventory(groupMember, true);
                 //Inventory inventory = BackpackExpander.inventories[groupMember];
                 accountItems[groupMember] = new List<Inventory.Item>();
 
@@ -437,13 +488,13 @@ namespace SteamBot
         }
 
         #region GroupManager helpers
-        private Inventory GetInventory()
+        private Inventory GetInventory(bool readOnly)
         {
-            return GetInventory(this.steamID);
+            return GetInventory(this.steamID, readOnly);
         }
-        private Inventory GetInventory(SteamID id)
+        private Inventory GetInventory(SteamID id, bool readOnly)
         {
-            return BackpackExpander.groupManager.GetInventory(id);
+            return BackpackExpander.groupManager.GetInventory(id, readOnly);
         }
 
         private IEnumerable<SteamID> GetGroupMembers()
