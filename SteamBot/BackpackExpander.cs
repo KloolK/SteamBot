@@ -308,6 +308,11 @@ namespace SteamBot
             throw new NotImplementedException();
         }
 
+        public override bool OnGroupAdd()
+        {
+            throw new NotImplementedException();
+        }
+
         private Dictionary<SteamKit2.SteamID, List<Inventory.Item>> GetGroupItems(string args)
         {
             // determine requested amount

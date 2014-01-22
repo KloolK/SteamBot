@@ -567,5 +567,10 @@ namespace SteamBot
             }
             return null;
         }
+
+        public override bool OnGroupAdd()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
